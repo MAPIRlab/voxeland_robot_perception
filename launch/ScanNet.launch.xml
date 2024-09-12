@@ -1,0 +1,48 @@
+<launch>
+	<node pkg="voxeland_robot_perception" exec="robot_perception_node.py" name="robot_perception_node">
+
+		<!-- Dataset Name -->
+		<param name="dataset" value="other" />
+		<param name="object_detector" value="Detectron2" />
+
+		<!-- Topics and Services -->
+		<param name="topic_camera_info" value="/camera/camera_info" />
+		<param name="topic_rgb_image" value="/camera/rgb" />
+		<param name="topic_depth_image" value="/camera/depth" />
+		<param name="topic_localization" value="/amcl_pose" />
+
+		<param name="semantic_segmentation_mode" value="service" />		# Possible values: "topic" or "service"
+			<param name="service_sem_seg" value="/detectron/segment" />	# used if semantic_segmentation_mode="service"
+			<param name="topic_sem_seg" value="/ViMantic/Detections" />	# used if semantic_segmentation_mode="topic"
+
+		<!-- Images Messages Types -->
+        <param name="rgb_image_type" value="Image" />     # Possible values: "CompressedImage" or "Image"
+        <param name="depth_image_type" value="Image" />   # Possible values: "CompressedImage" or "Image"
+		
+		<!-- RGB-D Camera Info -->
+		<param name="intrinsics_from_topic" value="true" />
+			<param name="width" value="1920" />
+			<param name="height" value="1080" />
+			<param name="cx" value="959.5" />
+			<param name="cy" value="539.5" />
+			<param name="fx" value="1371.022" />
+			<param name="fy" value="1371.022" />
+		<param name="camera_max_depth" value="10.0" />
+
+		<param name="limit_reliable_depth" value="true" />
+		<param name="min_reliable_depth" value="0.01" />
+		<param name="max_reliable_depth" value="3.00" />
+
+		<!-- Frame IDs -->
+		<param name="map_frame_id" value="map" />
+		<param name="robot_frame_id" value="camera" />
+		<param name="camera_frame_id" value="camera" />
+
+		<!-- Output configuration -->
+		<param name="pointcloud_type" value="XYZSemantics" />					# Possible values: "XYZ", "XYZRGB" and "XYZSemantics"
+		<param name="topic_pointcloud_output" value="cloud_in" />
+
+	</node>
+
+	<node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share voxeland_robot_perception)/rviz/rgbd_nn_map.rviz"/>
+</launch>
