@@ -65,6 +65,8 @@ class MinimalMapper(Node):
         self.valid_classes = ["bed", "chair", "couch", "dining table", "book", "refrigerator", "tv", "toilet", "handbag", "unknown"]
         self.valid_classes = categories
 
+         # OBJECTS AND HANDLERS
+
         self.pointcloud_utils = Semantic_PointCloud_Utils(categories)
         self.standarization = DataStandarization(dataset=self.load_param('dataset', "VirtualGallery"),
                                                  object_detector=self.load_param('object_detector', "Detectron2"))
@@ -84,6 +86,8 @@ class MinimalMapper(Node):
             fy = self.load_param('fy', 1371.022)
             
             self.camera.set_intrinsics(width, height, cx, cy, fx, fy)
+
+            self.standarization.set_image_dimension(width, height)
 
         self.limit_depth = self.load_param('limit_reliable_depth', False)
         if self.limit_depth:
@@ -248,7 +252,7 @@ class MinimalMapper(Node):
                 cloud_msg = self.pointcloud_utils.create_point_cloud_msg(xyz_cloud, 
                                                                          colors = rgb_colors,
                                                                          sensor_pose = pose_msg,
-                                                                         cloud_frame_reference = self.robot_frame_id, 
+                                                                         cloud_frame_reference = self.camera_frame_id, 
                                                                          timestamp = processing_observation["timestamp"])
 
             elif self.pointcloud_type == "XYZSemantics":
@@ -256,7 +260,7 @@ class MinimalMapper(Node):
                                                                          semantics_ids = semantic_ids,
                                                                          semantics_instances=processing_observation["semantics"].objects,
                                                                          sensor_pose = pose_msg,
-                                                                         cloud_frame_reference = self.robot_frame_id, 
+                                                                         cloud_frame_reference = self.camera_frame_id, 
                                                                          timestamp = processing_observation["timestamp"])
             
             elif self.pointcloud_type == "XYZRGBSemantics":       
@@ -265,7 +269,7 @@ class MinimalMapper(Node):
                                                                          semantics_ids = semantic_ids,
                                                                          semantics_instances=processing_observation["semantics"].objects,
                                                                          sensor_pose = pose_msg,
-                                                                         cloud_frame_reference = self.robot_frame_id, 
+                                                                         cloud_frame_reference = self.camera_frame_id, 
                                                                          timestamp = processing_observation["timestamp"])
 
 
@@ -292,8 +296,8 @@ class MinimalMapper(Node):
 
         observation["semantics"] = self.standarization.standarize_semantics(response.result())
 
-        if observation["semantics"].n_objects > 0:
-            self.data_queue.append(observation)
+        #if observation["semantics"].n_objects > 0:
+        self.data_queue.append(observation)
 
 
     ####################################################################################################################
@@ -306,6 +310,8 @@ class MinimalMapper(Node):
 
             self.camera.set_intrinsics(camera_info.width, camera_info.height, camera_info.k[2], 
                                        camera_info.k[5], camera_info.k[0], camera_info.k[4])
+            
+            self.standarization.set_image_dimension(camera_info.width, camera_info.height)
 
     def new_incoming_observation_cb(*args):
         
@@ -338,8 +344,8 @@ class MinimalMapper(Node):
 
                 if args[0].segmentation_from == "topic":
                     new_observation["semantics"] = self.standarization.standarize_semantics(sem_msg)
-                    if new_observation["semantics"].n_objects > 0:
-                        self.data_queue.append(new_observation)
+                    #if new_observation["semantics"].n_objects > 0:
+                    self.data_queue.append(new_observation)
 
                 else:
                     self.request_segmentation(new_observation)

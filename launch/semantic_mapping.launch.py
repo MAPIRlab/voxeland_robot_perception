@@ -30,7 +30,7 @@ def launch_setup(context, *args, **kwargs):
     node = Node(
         package="voxeland_robot_perception",
         executable="robot_perception_node.py",
-        prefix ="xterm -e",
+        prefix ="xterm -hold -e",
         parameters=[
            {"dataset": parse_substitution("$(var dataset)")},
            {"object_detector": parse_substitution("$(var object_detector)")},
@@ -61,7 +61,7 @@ def launch_setup(context, *args, **kwargs):
             {"camera_max_depth" :10.0 },
 
             #Depth Limits
-            {"limit_reliable_depth" : True },
+            {"limit_reliable_depth" : False },
             {"min_reliable_depth" : 0.01 },
             {"max_reliable_depth" : 3.00 },
 
@@ -71,7 +71,7 @@ def launch_setup(context, *args, **kwargs):
             {"camera_frame_id" : parse_substitution("$(var camera_frame_id)") },
 
             #Output configuration
-            {"pointcloud_type" :"XYZRGBSemantics" },					# Possible values: "XYZ", "XYZRGB" and "XYZSemantics"
+            {"pointcloud_type" :"XYZSemantics" },					# Possible values: "XYZ", "XYZRGB" and "XYZSemantics"
             {"topic_pointcloud_output" :"cloud_in" },
 
         ],

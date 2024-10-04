@@ -8,9 +8,16 @@ class DataStandarization(object):
     
     def __init__(self, dataset, object_detector, object_categories_txt = "coco-classes.txt"):
 
+        self.image_width = 0
+        self.image_height = 0
         self.dataset = dataset
         self.object_detector = object_detector
         self.bridge = CvBridge()
+
+    def set_image_dimension(self,width, height):
+        
+        self.image_width = width
+        self.image_height = height
 
     def standarize_rgb(self, rgb_msg):
 
@@ -92,7 +99,7 @@ class DataStandarization(object):
     def standarize_semantics(self, semantic_msg):
 
         if len(semantic_msg.instances) == 0:
-                return Semantics(0,0)
+                return Semantics(self.image_width, self.image_height)
 
         standard_semantics = Semantics(semantic_msg.instances[0].mask.width, semantic_msg.instances[0].mask.height)
 

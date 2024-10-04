@@ -29,7 +29,7 @@
 			<param name="fy" value="1371.022" />
 		<param name="camera_max_depth" value="10.0" />
 
-		<param name="limit_reliable_depth" value="true" />
+		<param name="limit_reliable_depth" value="false" />
 		<param name="min_reliable_depth" value="0.01" />
 		<param name="max_reliable_depth" value="3.00" />
 
