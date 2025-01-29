@@ -23,6 +23,10 @@ def launch_arguments():
         DeclareLaunchArgument("camera_frame_id", default_value="camera"),
 
         DeclareLaunchArgument("mapping_mode", default_value="XYZSemantics"),
+
+        DeclareLaunchArgument("semantic_segmentation_mode", default_value="service"),
+        DeclareLaunchArgument("service_name", default_value="/detectron/segment"),
+        DeclareLaunchArgument("topic_sem_seg", default_value="/ViMantic/Detections"),
    ]
 #==========================
 
@@ -42,9 +46,9 @@ def launch_setup(context, *args, **kwargs):
            {"topic_localization": parse_substitution("$(var topic_localization)")},
 
             #Segmentation
-           {"semantic_segmentation_mode": "service"},
-           {"service_sem_seg": "/detectron/segment"},
-           {"topic_sem_seg": "/ViMantic/Detections"},
+           {"semantic_segmentation_mode": parse_substitution("$service")},
+           {"service_name": parse_substitution("$/yolo/segment")},
+           {"topic_sem_seg": parse_substitution("$/ViMantic/Detections")},
 
             #Message type (Image, CompressedImage)
            {"rgb_image_type": "Image"},

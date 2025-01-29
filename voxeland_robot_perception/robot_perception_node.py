@@ -111,9 +111,10 @@ class MinimalMapper(Node):
         if self.segmentation_from == "topic":
             subscriptions.append(message_filters.Subscriber(self, Image, "/camera/segmentation"))
         elif self.segmentation_from == "service": 
-            self.cli = self.create_client(SegmentImage, '/detectron/segment')
+            serviceName = self.load_param('service_name', "/detectron/segment")
+            self.cli = self.create_client(SegmentImage, serviceName)
             while not self.cli.wait_for_service(timeout_sec=1.0):
-                self.get_logger().warn('Semantic segmentation service not available, waiting...')
+                self.get_logger().warn(f'Semantic segmentation service {self.cli.srv_name} not available, waiting...')
 
         message_filter = message_filters.ApproximateTimeSynchronizer(subscriptions, 1, 0.1)
         message_filter.registerCallback(self.new_incoming_observation_cb)
@@ -319,6 +320,10 @@ class MinimalMapper(Node):
             self, pose_msg, rgb_msg, depth_msg, sem_msg = args
         else:
             self, pose_msg, rgb_msg, depth_msg  = args
+
+        #TODO this stops the buffering so that you always process the newest image when possible. Otherwise the old images get queued up to make sure we don't skip any frames
+        if len(self.data_queue) > 0:
+            return
 
 
         if self.camera.intrinsics_initialized and self.camera.extrinsics_initialized:
