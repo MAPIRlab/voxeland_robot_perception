@@ -46,9 +46,9 @@ def launch_setup(context, *args, **kwargs):
            {"topic_localization": parse_substitution("$(var topic_localization)")},
 
             #Segmentation
-           {"semantic_segmentation_mode": parse_substitution("$service")},
-           {"service_name": parse_substitution("$/yolo/segment")},
-           {"topic_sem_seg": parse_substitution("$/ViMantic/Detections")},
+           {"semantic_segmentation_mode": parse_substitution("$(var semantic_segmentation_mode)")},
+           {"service_name": parse_substitution("$(var service_name)")},
+           {"topic_sem_seg": parse_substitution("$(var topic_sem_seg)")},
 
             #Message type (Image, CompressedImage)
            {"rgb_image_type": "Image"},
