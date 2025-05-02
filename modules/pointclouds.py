@@ -58,6 +58,8 @@ class Semantic_PointCloud_Utils(object):
             cloud_data.append(semantics_ids)
             
             msg.instances = [obj for obj in semantics_instances]
+            for obj in msg.instances:
+                obj.header = header
 
             offset += 4
         
