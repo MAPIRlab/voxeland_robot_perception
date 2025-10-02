@@ -2,14 +2,10 @@
 
 # System Libraries
 import threading
-from copy import deepcopy
 import time
 
 # Third-party libraries
-import open3d as o3d
 import numpy as np
-from sklearn.cluster import DBSCAN
-import matplotlib.pyplot as plt
 
 # Own libraries
 from modules.transformations import Transformations
@@ -21,7 +17,7 @@ from modules.pointclouds import Semantic_PointCloud_Utils
 import rclpy
 import message_filters
 from rclpy.node import Node
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 import threading
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -94,31 +90,6 @@ class MinimalMapper(Node):
 
             self.camera.set_limit_depth_range(self.load_param('min_reliable_depth', None), self.load_param('max_reliable_depth', None))
 
-        # TOPICS AND SERVICES CONFIGURATION
-        if intrinsics_from_topic:
-            self.create_subscription(CameraInfo, self.load_param('topic_camera_info', '/camera/camera_info'), self.camera_info_cb, 1)
-            
-        subscriptions = [
-        message_filters.Subscriber(self, PoseWithCovarianceStamped, 
-                                   self.load_param('topic_localization', '/amcl_pose')),        # Robot Pose
-        message_filters.Subscriber(self, eval(self.load_param('rgb_image_type', "Image")), 
-                                   self.load_param('topic_rgb_image', "/camera/rgb")),          # RGB Image
-        message_filters.Subscriber(self, eval(self.load_param('depth_image_type', "Image")), 
-                                   self.load_param('topic_depth_image', "/camera/depth")),       # Depth Image
-        ]
-
-        self.segmentation_from = self.load_param('semantic_segmentation_mode', "service")
-        if self.segmentation_from == "topic":
-            subscriptions.append(message_filters.Subscriber(self, Image, "/camera/segmentation"))
-        elif self.segmentation_from == "service": 
-            serviceName = self.load_param('service_name', "/detectron/segment")
-            self.cli = self.create_client(SegmentImage, serviceName)
-            while not self.cli.wait_for_service(timeout_sec=1.0):
-                self.get_logger().warn(f'Semantic segmentation service {self.cli.srv_name} not available, waiting...')
-
-        message_filter = message_filters.ApproximateTimeSynchronizer(subscriptions, 1, 0.1)
-        message_filter.registerCallback(self.new_incoming_observation_cb)
-
         # FRAME IDs
         self.map_frame_id = self.load_param('map_frame_id', "map")
         self.robot_frame_id = self.load_param('robot_frame_id', "base_link")
@@ -137,6 +108,40 @@ class MinimalMapper(Node):
         self._start_time = 0  # Time when the code starts
         self.opinions_time = 0
         self.opinions_k = 0
+
+        # TOPICS AND SERVICES CONFIGURATION
+        if intrinsics_from_topic:
+            self.create_subscription(CameraInfo, self.load_param('topic_camera_info', '/camera/camera_info'), self.camera_info_cb, 1)
+            
+        subscriptions = [
+        message_filters.Subscriber(self, PoseWithCovarianceStamped, 
+                                   self.load_param('topic_localization', '/amcl_pose')),        # Robot Pose
+        message_filters.Subscriber(self, eval(self.load_param('rgb_image_type', "Image")), 
+                                   self.load_param('topic_rgb_image', "/camera/rgb")),          # RGB Image
+        message_filters.Subscriber(self, eval(self.load_param('depth_image_type', "Image")), 
+                                   self.load_param('topic_depth_image', "/camera/depth")),       # Depth Image
+        ]
+
+        # Decide where the semantic information comes from
+        # if it's 'topic', we need to add that entry to the synchronizer filter
+        if self.is_using_semantics():
+            self.segmentation_from = self.load_param('semantic_segmentation_mode', "service")
+            if self.segmentation_from == "topic":
+                subscriptions.append(message_filters.Subscriber(self, Image, "/camera/segmentation"))
+            elif self.segmentation_from == "service": 
+                serviceName = self.load_param('service_name', "/detectron/segment")
+                self.cli = self.create_client(SegmentImage, serviceName)
+                while not self.cli.wait_for_service(timeout_sec=1.0):
+                    self.get_logger().warn(f'Semantic segmentation service {self.cli.srv_name} not available, waiting...')
+            else:
+                self.get_logger().error(f"Invalid semantic_segmentation_mode: '{self.segmentation_from}' when using pointcloud_type '{self.pointcloud_type}. Must be 'service' or 'topic'.'")
+                exit()
+        else:
+            self.get_logger().info(f"Not using semantics (pointcloud_type: {self.pointcloud_type})")
+            self.segmentation_from = "None"
+
+        message_filter = message_filters.ApproximateTimeSynchronizer(subscriptions, 1, 0.1)
+        message_filter.registerCallback(self.new_incoming_observation_cb)
 
         self.get_logger().warn("[VOXELAND] Everything ready to map!")
 
@@ -171,7 +176,7 @@ class MinimalMapper(Node):
                     rgb_colors = processing_observation["img_rgb"].reshape((-1,3))[mask_depth_limits.flatten()]
                 else:
                     rgb_colors = processing_observation["img_rgb"].reshape((-1,3))
-            if "Semantics" in self.pointcloud_type:
+            if self.is_using_semantics():
                 if self.limit_depth:
                     semantic_ids = processing_observation["semantics"].semantic_image[mask_depth_limits].reshape(-1)
                 else:
@@ -277,7 +282,7 @@ class MinimalMapper(Node):
             self.pointcloud_pub.publish(cloud_msg)
             self.pointcloud_pub1.publish(cloud_msg.cloud)
 
-            if "Semantics" in self.pointcloud_type:
+            if self.is_using_semantics():
                 self.get_logger().info("Observation processed! ||  {} objects detected.".format(processing_observation["semantics"].n_objects))
 
             self.get_logger().info("Average opinions generation time: {} ms".format(1000.*self.opinions_time / float(self.opinions_k)))
@@ -345,7 +350,7 @@ class MinimalMapper(Node):
                                "semantics": None,
                                "timestamp": rgb_msg.header.stamp}
 
-            if "Semantics" in self.pointcloud_type:
+            if self.is_using_semantics():
 
                 if args[0].segmentation_from == "topic":
                     new_observation["semantics"] = self.standarization.standarize_semantics(sem_msg)
@@ -398,6 +403,9 @@ class MinimalMapper(Node):
         new_param = self.declare_parameter(param, default).value
         self.get_logger().info("[VOXELAND] {}: {}".format(param, new_param))
         return new_param
+    
+    def is_using_semantics(self):
+        return "Semantics" in self.pointcloud_type
 
 ########################################################################################################################
 ########################################################## MAIN ########################################################
