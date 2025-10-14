@@ -1,0 +1,65 @@
+<launch>
+	<node pkg="voxeland_robot_perception" exec="robot_perception_node.py" name="perception_node">
+
+		<!-- Dataset Name -->
+		<param name="dataset" value="MAPIRlab_olfaction" />
+		<param name="object_detector" value="Detectron2" />
+
+		<!-- Topics and Services -->
+		<param name="topic_camera_info" value="/giraff/camera/color/camera_info" />
+		<param name="topic_rgb_image" value="/giraff/camera/color/image_compressed" />
+		<param name="topic_depth_image" value="/giraff/camera/depth/image_compressed" />
+		<param name="topic_localization" value="/giraff/amcl_pose" />
+
+		<param name="semantic_segmentation_mode" value=""/>		# Possible values: "topic" or "service"
+			<param name="service_sem_seg" value="/detectron/segment" />	# used if semantic_segmentation_mode="service"
+			<param name="topic_sem_seg" value="/ViMantic/Detections" />	# used if semantic_segmentation_mode="topic"
+
+		<!-- Images Messages Types -->
+        <param name="rgb_image_type" value="CompressedImage" />     # Possible values: "CompressedImage" or "Image"
+        <param name="depth_image_type" value="CompressedImage" />   # Possible values: "CompressedImage" or "Image"
+		
+		<!-- RGB-D Camera Info -->
+		<param name="intrinsics_from_topic" value="true" />
+			<param name="width" value="1920" />
+			<param name="height" value="1080" />
+			<param name="cx" value="959.5" />
+			<param name="cy" value="539.5" />
+			<param name="fx" value="1371.022" />
+			<param name="fy" value="1371.022" />
+		<param name="camera_max_depth" value="10.0" />
+
+		<param name="limit_reliable_depth" value="false" />
+		<param name="min_reliable_depth" value="0.01" />
+		<param name="max_reliable_depth" value="3.00" />
+
+		<!-- Frame IDs -->
+		<param name="map_frame_id" value="map" />
+		<param name="robot_frame_id" value="camera" />
+		<param name="camera_frame_id" value="camera" />   #Original value: camera
+
+		<!-- Output configuration -->
+		<param name="pointcloud_type" value="XYZ"/>					# Possible values: "XYZ", "XYZRGB" and "XYZSemantics"
+		<param name="topic_pointcloud_output" value="/pose_to_sample" />
+
+	</node>
+
+	<node pkg="voxeland_robot_perception" exec="robot_sampling_pose.py" name="pose_sampler" launch-prefix="xterm -e">
+
+		<!-- Topics and Services -->
+		<param name="topic_pose_to_sample" value="/pose_to_sample" />
+
+		<!-- Mapping parameters -->
+		<param name="n_samples" value="20" />
+
+		<!-- Output configuration --> 
+		<param name="sampling_results" value="cloud_in"/>
+		<param name="sampled_pose_echo" value="sampled_pose"/>
+		<param name="sensor_pose" value="remap/giraff/amcl_pose"/>
+
+	</node>
+
+
+	<node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share voxeland_robot_perception)/rviz/PoseSampling_Comparation.rviz"/>
+	<!-- node pkg="rviz2" exec="rviz2" name="rviz2" output="screen" args="-d $(find-pkg-share voxeland_robot_perception)/rviz/rgbd_nn_map.rviz" -->
+</launch>

@@ -30,13 +30,15 @@ class Transformations(object):
         return self.pose_to_pq(msg.pose)
 
     def transform_to_pq(self,msg):
-        """Convert a C{geometry_msgs/Transform} into position/quaternion np arrays
+        """Convert a C{geometry_msgs/Transform} or {geometry_msgs/TransformStamped} into position/quaternion np arrays
 
         :param msg: ROS message to be converted
         :return:
           - p: position as a np.array
           - q: quaternion as a numpy array (order = [x,y,z,w])
         """
+        if isinstance(msg,TransformStamped): msg = msg.transform 
+
         p = np.array([msg.translation.x, msg.translation.y, msg.translation.z])
         q = np.array([msg.rotation.x, msg.rotation.y,
                       msg.rotation.z, msg.rotation.w])
@@ -259,3 +261,196 @@ class Transformations(object):
         q_msg.w = q[3]
 
         return q_msg
+    
+    def msg_to_pv_cvmatrix(self,pose_msg):  
+
+        """Method to transform a Pose/PoseWithCovariance/PoseWithCovarianceStamped msg into position vector and Euler angles
+        
+        - Input: 
+        
+        :pose_msg: msg received from topic
+        
+        - Output:
+
+        :p: Position Vector [x,y,z]
+        :v_ang: Euler Angles Vector [pitch, roll, yaw] = [u,v,w]
+        :cv_matrix: Covariance Matrix from pose      
+        
+        """  
+
+        p,q,cv_matrix=self.pose_to_pq_cvmatrix(pose_msg) # P, Covariance Matrix and Quaternion extracted from msg
+        v_ang = self.quaternion_to_euler(q) # Quaternion to Euler angles conversion
+
+        return p, v_ang, cv_matrix
+    
+    def pv_to_msg(self,p,v_ang,cv_matrix):
+
+        """Method to transform Position and Euler Angles vectors to PoseWithCovariance msg 
+
+        - Input: 
+        
+        :p: Position Vector [x,y,z]
+        :v_ang: Euler Angles Vector [pitch, roll, yaw] = [u,v,w]
+        :cv_matrix: Covariance Matrix  
+        
+        - Output:
+
+        :msg: PoseWithCovariance msg   
+        
+        """  
+
+        msg = PoseWithCovariance()
+
+        q = self.euler_to_quaternion(v_ang)   
+        se3=self.quaternion_matrix(q)
+        se3[0,3]=p[0]
+        se3[1,3]=p[1]
+        se3[2,3]=p[2]
+
+        covariance = cv_matrix.flatten()
+        
+        msg = self.se3_to_msg(se3,covariance)
+
+        return msg
+
+    @staticmethod
+    def quaternion_to_euler(q):
+
+        ''' 
+        Method to convert quaternion to roll, pitch and yaw angles
+        
+        - Input: q = quaternion array [x,y,z,w] (xi + yj + zk + w)
+
+        - Output ang_v = [u,v,w] : roll, pitch and yaw angles stored as array
+        
+        '''
+
+        x = q[0]
+        y = q[1]
+        z = q[2]
+        w = q[3]
+
+
+        u = np.arctan2(2*w*x+y*z,w**2 - x**2 - y**2 + z**2)
+        v = np.arcsin(2*(w*y-x*z))
+        w = np.arctan2(2*(w*z+x*y),w**2 + x**2 - y**2 - z**3)
+
+        return [u,v,w]
+    
+
+
+    @staticmethod 
+    def euler_to_quaternion(v_ang):
+
+        """:Euler to Quaternion: 
+        
+        - Input:
+            :v_angle: 3x1 array containing roll, pitch and yaw angles [u,v,w]
+
+        - Output
+            :q: Quaternion array, [x,y,z,w]
+        
+        """
+
+        q=[0,0,0,0]
+
+        u = v_ang[0]
+        v = v_ang[1]
+        w = v_ang[2]
+
+        q[0] = np.sin(u/2)*np.cos(v/2)*np.cos(w/2)-np.cos(u/2)*np.sin(v/2)*np.sin(w/2)   #x
+        q[1] = np.cos(u/2)*np.sin(v/2)*np.cos(w/2)+np.sin(u/2)*np.cos(v/2)*np.sin(w/2)   #y
+        q[2] = np.cos(u/2)*np.cos(v/2)*np.sin(w/2)-np.sin(u/2)*np.sin(v/2)*np.cos(w/2)   #z
+        q[3] = np.cos(u/2)*np.cos(v/2)*np.cos(w/2)+np.sin(u/2)*np.sin(v/2)*np.sin(w/2)   #w
+
+        return q
+
+    @staticmethod
+    def pose_to_pq_cvmatrix(pose_msg):
+
+        '''Transform Pose/PosewithCovariance/PoswWithCovarianceStamped msgs to p, q, and covariance matrix
+        
+        - Input: 
+                :pose_msg: geometry_msg/ (a. Pose, b. PoseWithCovariance, c. PoseWithCovarianceStamped)
+
+        - Output: 
+                :p: Position vector: [x,y,z]
+                :q: Quaternion vector: [x,y,z,w]
+                :cv_matrix: 6x6 covariance matrix          
+
+        '''
+
+        if isinstance(pose_msg,Pose):
+            
+            p = [pose.position.x, pose.position.y, pose.position.z] 
+            q = [pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w]
+            cv_matrix = None
+
+            return p,q,cv_matrix
+
+        if isinstance(pose_msg,PoseWithCovarianceStamped):
+            pose = pose_msg.pose.pose
+            cv_matrix=pose_msg.pose.covariance.reshape(6,6)
+        elif isinstance(pose_msg,PoseWithCovariance):
+            pose = pose_msg.pose
+            cv_matrix=pose_msg.covariance.reshape(6,6)
+        
+        p=[pose.position.x, pose.position.y, pose.position.z]
+        q=[pose.orientation.x,pose.orientation.y,pose.orientation.z,pose.orientation.w]
+
+        return p,q,cv_matrix
+    
+
+    def se3_to_TransformStamped(self, se3):
+
+        '''Converts a se3 pose transformation into a TransformStamped msg, required type by TF2 in order to propagate uncertainity
+        
+        
+         - Input: 
+                :se3: SE3 Transformation Matrix 
+
+        - Output: 
+                :transform: TransformStamped msg: TransformStamped geometry.msg used by TF2         
+        '''
+
+        transform = TransformStamped()
+
+
+        pose = self.se3_to_msg(se3)
+
+        transform.transform.translation.x = pose.position.x
+        transform.transform.translation.y = pose.position.y
+        transform.transform.translation.z = pose.position.z
+
+        transform.transform.rotation.x = pose.orientation.x
+        transform.transform.rotation.y = pose.orientation.y
+        transform.transform.rotation.z = pose.orientation.z
+        transform.transform.rotation.w = pose.orientation.w
+
+        return transform
+
+ 
+    
+
+
+    @staticmethod
+    def sample_distribution(p,v_ang,cv_matrix,n_samples):
+
+        '''Sample
+        
+        - Input: 
+                :p: Position vector [x,y,z]
+                :v_ang: Euler Angle Vector: [roll, pitch, yaw]
+                :cv_matrix: 6x6 Covariance Matrix
+                :n_sample: Desired number of Pose samples
+
+        - Output: 
+                :sample_results: n_samples x 6 matrix [x_i y_i z_i roll_i pitch_i yaw_i]                                                            
+        '''
+
+        mean_v = p + v_ang 
+        
+        sampled_results=np.random.multivariate_normal(mean=mean_v,cov=cv_matrix,size=n_samples)
+
+        return sampled_results
+        

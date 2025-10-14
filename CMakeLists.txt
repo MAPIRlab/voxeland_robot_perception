@@ -25,6 +25,11 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  voxeland_robot_perception/robot_sampling_pose.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 install(DIRECTORY launch rviz
   DESTINATION share/${PROJECT_NAME})
 

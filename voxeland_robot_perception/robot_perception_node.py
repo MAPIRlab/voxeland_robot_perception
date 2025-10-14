@@ -16,6 +16,7 @@ from modules.transformations import Transformations
 from modules.camera import Camera
 from modules.data_standarization import DataStandarization
 from modules.pointclouds import Semantic_PointCloud_Utils
+from modules.uncertainity import Uncertainity_Ops
 
 # ROS-related libraries
 import rclpy
@@ -47,6 +48,7 @@ class MinimalMapper(Node):
         # OBJECTS INITIALIZATION
         self.camera = Camera()
         self.transformations = Transformations()
+        self.uncertainity_handler = Uncertainity_Ops()
 
         # This is hardcoded... change to read it from a file
         categories = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
@@ -73,6 +75,7 @@ class MinimalMapper(Node):
         self.bridge = CvBridge()
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        
         
         # CAMERA INFO: INTRINSICS AND SPECS
         intrinsics_from_topic = self.load_param('intrinsics_from_topic', True)
@@ -232,7 +235,8 @@ class MinimalMapper(Node):
             
             self.opinions_time += time.time() - st
             self.opinions_k += 1
-            global_pose = processing_observation["pose"] @ self.camera.extrinsics
+
+            pose_msg=self.uncertainity_handler.pose_transform(processing_observation["pose"],processing_observation["covariance"],self.camera.extrinsics)
 
             #a = time.time()
             #pcd1 = o3d.geometry.PointCloud(points = o3d.utility.Vector3dVector(xyz_cloud))
@@ -240,7 +244,7 @@ class MinimalMapper(Node):
             #xyz_cloud = np.array(pcd1.points)
             #self.get_logger().info("{}".format(time.time() - a))
             
-            pose_msg = self.transformations.se3_to_msg(global_pose, processing_observation["covariance"])
+            
             #pose_msg = self.transformations.se3_to_msg(np.eye(4), processing_observation["covariance"])
 
 

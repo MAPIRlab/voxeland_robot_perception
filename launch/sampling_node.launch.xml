@@ -1,0 +1,17 @@
+<launch>
+
+	<node pkg="voxeland_robot_perception" exec="robot_sampling_pose.py" name="pose_sampler">
+
+		<!-- Topics and Services -->
+		<param name="topic_pose_to_sample" value="/pose_to_sample" />
+
+		<!-- Mapping parameters -->
+		<param name="n_samples" value="20" />
+
+		<!-- Output configuration --> 
+		<param name="sampling_results" value="cloud_in" />
+		<param name="sampled_pose_echo" value="sampled_pose" />
+
+	</node>
+
+</launch>
