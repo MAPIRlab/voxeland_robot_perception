@@ -20,7 +20,7 @@ class Uncertainity_Ops(object):
     def pose_transform(self,se3_pose, cv_matrix, se3_transform):
 
         '''
-        Description
+        Applies a transformation to a pose and propagates uncertainity associated to said pose
 
         - Inputs
 

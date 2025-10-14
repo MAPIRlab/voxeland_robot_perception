@@ -237,6 +237,7 @@ class MinimalMapper(Node):
             self.opinions_k += 1
 
             pose_msg=self.uncertainity_handler.pose_transform(processing_observation["pose"],processing_observation["covariance"],self.camera.extrinsics)
+            
 
             #a = time.time()
             #pcd1 = o3d.geometry.PointCloud(points = o3d.utility.Vector3dVector(xyz_cloud))

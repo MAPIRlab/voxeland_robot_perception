@@ -102,6 +102,17 @@ class Transformations(object):
         return odom_msg
     
     def se3_to_msg(self, se3, covariance = None):
+
+        """Convert a SE3 representation into a Pose/PoseWithCovariance msg
+            - Input
+
+            :se3: SE3 matrix representation of a pose/transformation
+            :covariance: (Default - None) Covariance Matrix associated to the given SE3 matrix pose/transformation
+
+            - Output
+                  - pose_msg: Pose | PoseWithCovariance msg if covariance is None | not None
+                """
+
         
         pose = Pose()
         pose.position.x = se3[0,3]
