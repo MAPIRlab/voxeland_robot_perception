@@ -1,7 +1,7 @@
 """
 Universal Semantic Mapping Launch File for Voxeland
 
-This unified launch file supports both TALOS and Detectron2 detectors.
+This unified launch file supports TALOS, Detectron2, and YOLOE detectors.
 Simply change the object_detector parameter to switch between them:
 
 Examples:
@@ -10,6 +10,9 @@ Examples:
 
   # For Detectron2 (COCO categories)  
   ros2 launch voxeland_robot_perception semantic_mapping.launch.py object_detector:=detectron2
+
+  # For YOLOE (open vocabulary)
+  ros2 launch voxeland_robot_perception semantic_mapping.launch.py object_detector:=yoloe
 
 The launch file automatically configures the appropriate service names,
 parameters, and features based on the selected detector.
@@ -28,7 +31,7 @@ def launch_arguments():
         # Core parameters
         DeclareLaunchArgument("dataset", default_value="other"),
         DeclareLaunchArgument("object_detector", default_value="detectron2", 
-                            description="Detector type: 'talos' for open vocabulary, 'detectron2' for COCO"),
+                            description="Detector type: 'talos' for open vocabulary, 'detectron2' for COCO, 'yoloe' for YOLOE"),
 
         # Camera and sensor topics
         DeclareLaunchArgument("topic_camera_info", default_value="/camera/camera_info"),
@@ -78,6 +81,15 @@ def launch_setup(context, *args, **kwargs):
         service_name = "/talos/segment"
         object_detector_name = "TALOS"
         # TALOS-specific parameters
+        extra_params = {
+            "initial_categories": LaunchConfiguration('initial_categories'),
+            "save_categories_file": LaunchConfiguration('save_categories_file'),
+            "filter_semantics": True,
+        }
+    elif detector_type == "yoloe":
+        service_name = "/yoloe/segment"
+        object_detector_name = "YOLOE"
+        # YOLOE supports open vocabulary
         extra_params = {
             "initial_categories": LaunchConfiguration('initial_categories'),
             "save_categories_file": LaunchConfiguration('save_categories_file'),
