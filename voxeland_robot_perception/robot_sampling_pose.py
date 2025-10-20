@@ -53,8 +53,9 @@ class PoseSampler(Node):
         self.data_queue = []
 
         # TOPICS AND SERVICES CONFIGURATION
+        
         self.create_subscription(SemanticPointCloud, self.load_param('topic_pose_to_sample', '/pose_to_sample'), self.sampling_cb, 1)
-            
+    
         # OUTPUT CONFIGURATION
         self.pointcloud_pub = self.create_publisher(SemanticPointCloud, self.load_param('sampling_results', "cloud_in"), 1)
         self.pointcloud_pub1 = self.create_publisher(PointCloud2, "cloud_in_local", 1)
