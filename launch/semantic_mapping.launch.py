@@ -9,7 +9,7 @@ Examples:
   ros2 launch voxeland_robot_perception semantic_mapping.launch.py object_detector:=talos
 
   # For Detectron2 (COCO categories)  
-  ros2 launch voxeland_robot_perception semantic_mapping.launch.py object_detector:=detectron2
+  ros2 launch voxeland_robot_perception semantic_mapping.launch.py object_detector:=detectron
 
   # For YOLOE (open vocabulary)
   ros2 launch voxeland_robot_perception semantic_mapping.launch.py object_detector:=yoloe
@@ -30,8 +30,8 @@ def launch_arguments():
     return [
         # Core parameters
         DeclareLaunchArgument("dataset", default_value="other"),
-        DeclareLaunchArgument("object_detector", default_value="detectron2", 
-                            description="Detector type: 'talos' for open vocabulary, 'detectron2' for COCO, 'yoloe' for YOLOE"),
+        DeclareLaunchArgument("object_detector", default_value="detectron", 
+                            description="Detector type: 'talos', 'yoloe', or 'detectron'"),
 
         # Camera and sensor topics
         DeclareLaunchArgument("topic_camera_info", default_value="/camera/camera_info"),
