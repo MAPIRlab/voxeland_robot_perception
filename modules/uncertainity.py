@@ -39,6 +39,35 @@ class Uncertainity_Ops(object):
         pose_result = self.transformation_tools.se3_to_msg(se3_pose @ se3_transform,tf2_transform_covariance(cv_matrix,transform))
 
         return pose_result
+    
+
+    def rand_cv_Matrix(self):
+
+        mask = np.array([
+                 [1, 1, 0, 0, 0, 0],
+                 [1, 1, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0, 0],
+                 [0, 0, 0, 0, 0, 1]
+            ], dtype=float)
+
+        
+        A = np.random.uniform(-0.01, 0.01, (6, 6))
+ 
+        A_cov = A @ A.T
+   
+        A_cov = A_cov / np.max(A_cov) * np.random.uniform(0.02, 0.04)
+
+        
+        A_cov = (A_cov + A_cov.T) / 2
+
+        for i in range(6):
+                if A_cov[i, i] == 0:
+                    A_cov[i, i] = np.random.uniform(0.02, 0.04)
+          
+        A_cov = A_cov * mask.T
+        return A_cov
         
 
 

@@ -30,6 +30,12 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+install(PROGRAMS
+  voxeland_robot_perception/pose_noise.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
 install(DIRECTORY launch rviz
   DESTINATION share/${PROJECT_NAME})
 
