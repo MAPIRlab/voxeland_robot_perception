@@ -1,0 +1,13 @@
+<launch>
+
+	<node pkg="voxeland_robot_perception" exec="pose_noise.py" name="NoiseAdder">
+
+		<!-- Topics and Services -->
+		<param name="Pose_GT" value="/amcl_pose" />
+
+		<!-- Output configuration --> 
+		<param name="pose_noise" value="noisy_pose" />
+
+	</node>
+
+</launch>

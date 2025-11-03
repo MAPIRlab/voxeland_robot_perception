@@ -460,8 +460,9 @@ class Transformations(object):
         '''
 
         mean_v = p + v_ang 
-        
-        sampled_results=np.random.multivariate_normal(mean=mean_v,cov=cv_matrix,size=n_samples)
 
+        rng = np.random.RandomState(12)
+        sampled_results=rng.multivariate_normal(mean=mean_v,cov=cv_matrix,size=n_samples)
+        
         return sampled_results
         

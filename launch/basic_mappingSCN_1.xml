@@ -1,31 +1,28 @@
 <launch>
 
-<!-- Launch robot perception node, to read Giraff rosbags and map without known pose with urcentainity poses-->
+<!-- Launch robot perception node to read ScanNet rosbags and map with ground truth pose-->
 
 
 	<node pkg="voxeland_robot_perception" exec="robot_perception_node.py" name="voxeland_perception_node">
 
 		<!-- Dataset Name -->
-		<param name="dataset" value="MAPIRlab_olfaction" />
+		<param name="dataset" value="other" />
 		<param name="object_detector" value="Detectron2" />
 
 		<!-- Topics and Services -->
-		<param name="topic_camera_info" value="/giraff/camera/color/camera_info" />
-		<param name="topic_rgb_image" value="/giraff/camera/color/image_compressed" />
-		<param name="topic_depth_image" value="/giraff/camera/depth/image_compressed" />
-		<param name="topic_localization" value="/giraff/pose" />
+		<param name="topic_camera_info" value="/camera/camera_info" />
+		<param name="topic_rgb_image" value="/camera/rgb" />
+		<param name="topic_depth_image" value="/camera/depth" />
+		<param name="topic_localization" value="/amcl_pose" />
 
 		<param name="semantic_segmentation_mode" value=""/>		# Possible values: "topic" or "service"
 			<param name="service_sem_seg" value="/detectron/segment" />	# used if semantic_segmentation_mode="service"
 			<param name="topic_sem_seg" value="/ViMantic/Detections" />	# used if semantic_segmentation_mode="topic"
 
 
-		<!-- Mapping parameters -->
-		<param name="n_samples" value="20" />
-
 		<!-- Images Messages Types -->
-        <param name="rgb_image_type" value="CompressedImage" />     # Possible values: "CompressedImage" or "Image"
-        <param name="depth_image_type" value="CompressedImage" />   # Possible values: "CompressedImage" or "Image"
+        <param name="rgb_image_type" value="Image" />     # Possible values: "CompressedImage" or "Image"
+        <param name="depth_image_type" value="Image" />   # Possible values: "CompressedImage" or "Image"
 		
 		<!-- RGB-D Camera Info -->
 		<param name="intrinsics_from_topic" value="true" />
