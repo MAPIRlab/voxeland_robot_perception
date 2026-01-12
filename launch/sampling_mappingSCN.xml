@@ -54,7 +54,7 @@
 		<param name="topic_pose_to_sample" value="/pose_to_sample" />
 
 		<!-- Mapping parameters -->
-		<param name="n_samples" value="5" />
+		<param name="n_samples" value="20" />
 
 		<!-- Output configuration --> 
 		<param name="sampling_results" value="cloud_in" />
