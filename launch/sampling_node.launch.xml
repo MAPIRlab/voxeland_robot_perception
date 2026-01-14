@@ -3,7 +3,7 @@
 	<node pkg="voxeland_robot_perception" exec="robot_sampling_pose.py" name="pose_sampler">
 
 		<!-- Topics and Services -->
-		<param name="topic_pose_to_sample" value="/amcl_pose" />
+		<param name="topic_pose_to_sample" value="/pose_to_sample" />
 
 		<!-- Mapping parameters -->
 		<param name="n_samples" value="1" />
