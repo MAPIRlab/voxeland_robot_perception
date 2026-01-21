@@ -137,12 +137,13 @@ class Transformations(object):
         else:
             raise TypeError("Invalid type for conversion to SE(3)")
         norm = np.linalg.norm(q)
-        if np.abs(norm - 1.0) > 1e-2:
+        # Check for severely corrupted quaternions
+        if np.abs(norm - 1.0) > 0.1:
             raise ValueError(
-                "Received un-normalized quaternion (q = {0:s} ||q|| = {1:3.6f})".format(
+                "Received severely corrupted quaternion (q = {0:s} ||q|| = {1:3.6f})".format(
                     str(q), np.linalg.norm(q)))
-        else:
-        #elif np.abs(norm - 1.0) > 1e-6:
+        # Normalize quaternion if needed (handles numerical errors in pose propagation)
+        if np.abs(norm - 1.0) > 1e-6:
             q = q / norm
         g = self.quaternion_matrix(q)
         g[0:3, -1] = p

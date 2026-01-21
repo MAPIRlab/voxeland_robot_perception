@@ -49,65 +49,51 @@ class MinimalMapper(Node):
         # Initialize open vocabulary category manager
         self.category_manager = get_category_manager()
         
-        # Load initial categories from parameter or use COCO as fallback
-        initial_categories_param = self.load_param('initial_categories', None)
-        if initial_categories_param is None:
-            # Use COCO categories for backward compatibility when no parameter is provided
-            initial_categories = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
-                                'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
-                                'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
-                                'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-                                'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
-                                'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-                                'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
-                                'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-                                'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',
-                                'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
-                                'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
-                                'toothbrush']
-            self.get_logger().info("[VOXELAND] Using COCO categories as fallback")
-        elif initial_categories_param == "":
-            # Empty string means pure open vocabulary mode
-            initial_categories = []
-            self.get_logger().info("[VOXELAND] Using pure open vocabulary mode (no initial categories)")
+        # ========== VOCABULARY MODE CONFIGURATION ==========
+        # Set to True for closed vocabulary mode (fixed category list, like old Voxeland)
+        # Set to False for open vocabulary mode (dynamic categories)
+        self.close_vocabulary = False
+        
+        # Fixed category list for closed vocabulary mode
+        # These are the SceneNN evaluation categories
+        self.fixed_valid_classes = ["bed", "chair", "couch", "dining table", "book", 
+                                   "refrigerator", "tv", "toilet", "handbag", "unknown"]
+        
+        # COCO categories for open vocabulary fallback
+        coco_categories = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
+                          'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
+                          'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
+                          'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+                          'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
+                          'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
+                          'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+                          'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+                          'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',
+                          'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
+                          'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
+                          'toothbrush']
+        
+        # Configure based on vocabulary mode
+        if self.close_vocabulary:
+            # Closed vocabulary: use fixed category list
+            initial_categories = self.fixed_valid_classes.copy()
+            self.valid_classes = self.fixed_valid_classes.copy()
+            self.open_vocabulary_mode = False
+            self.get_logger().warn("[VOXELAND] Running in CLOSED VOCABULARY mode")
+            self.get_logger().warn(f"[VOXELAND] Valid categories: {self.valid_classes}")
         else:
-            # Parse comma-separated string or JSON format
-            try:
-                if initial_categories_param.startswith('[') and initial_categories_param.endswith(']'):
-                    # JSON format: ["cat1", "cat2", "cat3"]
-                    import json
-                    initial_categories = json.loads(initial_categories_param)
-                else:
-                    # Comma-separated format: "cat1,cat2,cat3"
-                    initial_categories = [cat.strip() for cat in initial_categories_param.split(',') if cat.strip()]
-                
-                if not initial_categories:  # Empty list
-                    initial_categories = []  # Pure open vocabulary mode
-                    self.get_logger().info("[VOXELAND] Using pure open vocabulary mode (no initial categories)")
-                else:
-                    self.get_logger().info(f"[VOXELAND] Using custom initial categories: {len(initial_categories)} categories")
-            except Exception as e:
-                self.get_logger().error(f"[VOXELAND] Error parsing initial_categories parameter: {e}")
-                initial_categories = []  # Fallback to empty list
+            # Open vocabulary: start with COCO categories
+            initial_categories = coco_categories
+            self.valid_classes = coco_categories.copy()
+            self.open_vocabulary_mode = True
+            self.get_logger().warn("[VOXELAND] Running in OPEN VOCABULARY mode")
+            self.get_logger().warn(f"[VOXELAND] Starting with {len(self.valid_classes)} COCO categories")
         
         # Initialize category manager with initial categories
         self.category_manager.initialize_with_categories(initial_categories)
         
         # Get current categories for initialization
         current_categories = self.category_manager.get_all_categories()
-        
-        # For backward compatibility, maintain valid_classes but make it dynamic
-        self.valid_classes = self.load_param('valid_classes', None)
-        if self.valid_classes is None:
-            self.valid_classes = current_categories
-            # In open vocabulary mode, disable class filtering by default
-            self.open_vocabulary_mode = len(initial_categories) == 0
-        else:
-            # Add any specified valid classes to the category manager
-            for category in self.valid_classes:
-                self.category_manager.add_category(category)
-            current_categories = self.category_manager.get_all_categories()
-            self.open_vocabulary_mode = False
 
          # OBJECTS AND HANDLERS
         self.pointcloud_utils = Semantic_PointCloud_Utils(current_categories, self.category_manager)
@@ -247,6 +233,7 @@ class MinimalMapper(Node):
                 if self.filter_semantics:
                     
                     # In open vocabulary mode, update valid_classes dynamically with new detected categories
+                    # In closed vocabulary mode, only use the fixed list (no dynamic updates)
                     if self.open_vocabulary_mode:
                         # Get all detected categories from the current frame
                         detected_categories = set()
@@ -276,7 +263,9 @@ class MinimalMapper(Node):
                             if save_categories_file:
                                 self.category_manager.save_categories_to_file(save_categories_file)
                     
-                    # Always filter using current valid_classes (which may have been updated above)
+                    # Filter using valid_classes
+                    # In closed vocabulary: filters out all categories not in fixed list
+                    # In open vocabulary: filters using dynamically updated list (may have been updated above)
                     semantic_ids = processing_observation["semantics"].filter_valid_classes(semantic_ids, self.valid_classes)
 
                     unique_ids = np.unique(semantic_ids)
