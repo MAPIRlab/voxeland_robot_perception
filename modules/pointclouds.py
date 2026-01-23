@@ -108,7 +108,7 @@ class Semantic_PointCloud_Utils(object):
         downsampled_points = np.asarray(downsampled_pcd.points)
 
         # Apply clustering to segment object from background
-        clustering = DBSCAN(eps=0.05 * np.sqrt(2) + 0.001, min_samples=9).fit(downsampled_points)
+        clustering = DBSCAN(eps=0.1, min_samples=9).fit(downsampled_points)
         labels = clustering.labels_
 
         if len(labels) == 0:
