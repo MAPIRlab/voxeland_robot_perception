@@ -276,59 +276,14 @@ class MinimalMapper(Node):
                         xyz_obj = xyz_cloud[semantic_ids == id]
                         semantic_labels = self.pointcloud_utils.remove_background_from_object_pointcloud(xyz_obj, id)
                         semantic_ids[semantic_ids == id] = semantic_labels
-                        #pcd_original = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz_obj))
-                        #o3d.visualization.draw_geometries([pcd_original])
-                        #o3d.io.write_point_cloud("test_pointcloud.pcd", pcd_original)
-                        #pcd_filtered = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz_cloud[semantic_ids == id]))
-                        #pcd_original.paint_uniform_color([1, 0, 0])
-                        #pcd_filtered.paint_uniform_color([0, 1, 0])
-                        #o3d.visualization.draw_geometries([pcd_original, pcd_filtered])
 
-                        ##### TODO: JL Esto de abajo es como segmentaba antes y funcionaba pero muy lento, revisar!!
-                        """
-                        xyz_obj = xyz_cloud[semantic_ids == id]
-                        #pcd_original = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz_obj))
-                        semantic_obj = semantic_ids[semantic_ids == id]
-                        clustering = DBSCAN(eps=0.05, min_samples=20).fit(xyz_obj)
-                        labels = clustering.labels_.astype(np.float_)
-                        labels_unique, counts = np.unique(labels, return_counts=True)
-                        majority_label = labels_unique[np.argmax(counts)]
-                        semantic_obj[(labels != majority_label)] = 0
-                        semantic_ids[semantic_ids == id] = semantic_obj
-                        #pcd_filtered = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz_cloud[semantic_ids == id]))
-                        #o3d.visualization.draw_geometries([pcd_filtered])
-                        """
-                        #self.get_logger().info("elapsed time filtering semantics: {}".format((time.time() - st_time)*1000.))
-         
-
-            """
-            for id in np.unique(semantic_ids):
-
-                if id == 1:
-                    continue
-                
-                pcd_local = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(xyz_cloud))
-                xyz_id =
-
-            labels = np.array(pcd.cluster_dbscan(eps=0.02, min_points=10, print_progress=False))
-            non_noise_labels = labels[labels != -1]
-            unique_labels, counts = np.unique(non_noise_labels, return_counts=True)
-            most_common_label = unique_labels[np.argmax(counts)]
-            xyz_mask = labels == most_common_label
-            """
             
             self.opinions_time += time.time() - st
             self.opinions_k += 1
             global_pose = processing_observation["pose"] @ self.camera.extrinsics
 
-            #a = time.time()
-            #pcd1 = o3d.geometry.PointCloud(points = o3d.utility.Vector3dVector(xyz_cloud))
-            #pcd1 = pcd1.transform(global_pose)
-            #xyz_cloud = np.array(pcd1.points)
-            #self.get_logger().info("{}".format(time.time() - a))
             
             pose_msg = self.transformations.se3_to_msg(global_pose, processing_observation["covariance"])
-            #pose_msg = self.transformations.se3_to_msg(np.eye(4), processing_observation["covariance"])
 
 
             if self.pointcloud_type == "XYZ":
@@ -428,11 +383,7 @@ class MinimalMapper(Node):
             img_rgb = self.standarization.standarize_rgb(rgb_msg)
             img_depth = self.standarization.standarize_depth(depth_msg)
 
-            #try:
             pose_se3 = self.transformations.msg_to_se3(pose_msg.pose.pose)
-            #except:
-            #    self.get_logger().warn("ERROR EN LA POSE!")
-            #    return
             pose_covariance = pose_msg.pose.covariance         
 
             new_observation = {"pose": pose_se3,
@@ -463,25 +414,12 @@ class MinimalMapper(Node):
                                                              self.camera_frame_id,
                                                              rclpy.time.Time())
                 
-                # Uncomment for robotatvirtualhome
-                #extrinsics.transform.rotation.y = 0.0871557
-                #extrinsics.transform.rotation.w = 0.9961947
 
                 self.camera.set_extrinsics(self.transformations.msg_to_se3(extrinsics))
                 self.get_logger().warn("{}".format(extrinsics))
 
 
             except:
-                # Uncomment for uHumans2
-                #extrinsics = TransformStamped()
-                #extrinsics.transform.translation.x = 0.
-                #extrinsics.transform.translation.y = 0.05
-                #extrinsics.transform.translation.z = 0.
-                #extrinsics.transform.rotation.x = 0.
-                #extrinsics.transform.rotation.y = 0.
-                #extrinsics.transform.rotation.z = 0.
-                #extrinsics.transform.rotation.w = 1.
-                #self.camera.set_extrinsics(self.transformations.msg_to_se3(extrinsics))
 
                 self.get_logger().warn("Transformation from {} [CAMERA FRAME] to {} [ROBOT FRAME] not found!".format(self.robot_frame_id,
                                                                                                                    rgb_msg.header.frame_id))
