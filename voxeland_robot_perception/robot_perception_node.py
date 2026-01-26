@@ -191,6 +191,8 @@ class MinimalMapper(Node):
         message_filter = message_filters.ApproximateTimeSynchronizer(subscriptions, 1, 0.1)
         message_filter.registerCallback(self.new_incoming_observation_cb)
 
+        self.waiting_for_segmentation = False
+
         self.get_logger().warn("[VOXELAND] Everything ready to map!")
 
     def run(self):
@@ -270,7 +272,6 @@ class MinimalMapper(Node):
 
                     unique_ids = np.unique(semantic_ids)
                     for id in unique_ids:
-                        st_time = time.time()
                         if id == 0:
                             continue
                         xyz_obj = xyz_cloud[semantic_ids == id]
@@ -340,16 +341,16 @@ class MinimalMapper(Node):
     ####################################################################################################################
     
     def request_segmentation(self, observation):
+        self.waiting_for_segmentation = True
         req = SegmentImage.Request()
         req.image = self.bridge.cv2_to_imgmsg(observation["img_rgb"], encoding="passthrough")
         future = self.cli.call_async(req)
         future.add_done_callback(lambda response: self.process_service_result(observation, response))
 
     def process_service_result(self, observation, response):
-
+        self.waiting_for_segmentation = False
         observation["semantics"] = self.standarization.standarize_semantics(response.result())
 
-        #if observation["semantics"].n_objects > 0:
         self.data_queue.append(observation)
 
 
@@ -374,7 +375,7 @@ class MinimalMapper(Node):
             self, pose_msg, rgb_msg, depth_msg  = args
 
         #TODO this stops the buffering so that you always process the newest image when possible. Otherwise the old images get queued up to make sure we don't skip any frames
-        if len(self.data_queue) > 0:
+        if self.waiting_for_segmentation:
             return
 
 
@@ -397,7 +398,6 @@ class MinimalMapper(Node):
 
                 if args[0].segmentation_from == "topic":
                     new_observation["semantics"] = self.standarization.standarize_semantics(sem_msg)
-                    #if new_observation["semantics"].n_objects > 0:
                     self.data_queue.append(new_observation)
 
                 else:

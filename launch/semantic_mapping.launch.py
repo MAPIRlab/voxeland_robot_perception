@@ -118,8 +118,8 @@ def launch_setup(context, *args, **kwargs):
         "topic_sem_seg": LaunchConfiguration('topic_sem_seg'),
         
         # Image message types
-        "rgb_image_type": "Image",
-        "depth_image_type": "Image",
+        "rgb_image_type": "CompressedImage",
+        "depth_image_type": "CompressedImage",
         
         # Camera calibration (intrinsics from topic)
         "intrinsics_from_topic": True,
@@ -170,7 +170,7 @@ def launch_setup(context, *args, **kwargs):
     
     return [
         robot_perception_node,
-        rviz_node,
+        # rviz_node,
     ]
 
 
