@@ -191,6 +191,7 @@ class MinimalMapper(Node):
         message_filter = message_filters.ApproximateTimeSynchronizer(subscriptions, 1, 0.1)
         message_filter.registerCallback(self.new_incoming_observation_cb)
 
+        self.queue_all_images = self.load_param("queue_all_images", False) # if True, keep a queue with all images. Otherwise, only process the most recent one
         self.waiting_for_segmentation = False
 
         self.get_logger().warn("[VOXELAND] Everything ready to map!")
@@ -374,8 +375,7 @@ class MinimalMapper(Node):
         else:
             self, pose_msg, rgb_msg, depth_msg  = args
 
-        #TODO this stops the buffering so that you always process the newest image when possible. Otherwise the old images get queued up to make sure we don't skip any frames
-        if self.waiting_for_segmentation:
+        if not self.queue_all_images and self.waiting_for_segmentation:
             return
 
 

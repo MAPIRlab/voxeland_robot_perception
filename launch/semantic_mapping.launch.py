@@ -144,6 +144,7 @@ def launch_setup(context, *args, **kwargs):
         # Output configuration
         "pointcloud_type": LaunchConfiguration('mapping_mode'),
         "topic_pointcloud_output": "cloud_in",
+        "queue_all_images" : False
     }
     
     # Merge base parameters with detector-specific ones
