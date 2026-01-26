@@ -30,7 +30,6 @@ class OpenVocabularyCategoryManager:
         
         # Always start with unknown and background categories
         self._add_category_internal("unknown")
-        self._add_category_internal("background")
     
     def add_category(self, category_name: str) -> int:
         """
@@ -149,8 +148,6 @@ class OpenVocabularyCategoryManager:
                 # Ensure unknown and background are present
                 if "unknown" not in self._category_to_index:
                     self._add_category_internal("unknown")
-                if "background" not in self._category_to_index:
-                    self._add_category_internal("background")
     
     def save_categories_to_file(self, filepath: str) -> None:
         """Save categories to a JSON file."""

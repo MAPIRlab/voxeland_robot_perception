@@ -100,6 +100,8 @@ class Semantic_PointCloud_Utils(object):
         downsampled_pcd = pcd.voxel_down_sample(0.05)
         downsampled_points = np.asarray(downsampled_pcd.points)
 
+        clustering_distance = 0.1
+
         # Apply clustering to segment object from background
         clustering = DBSCAN(eps=0.1, min_samples=9).fit(downsampled_points)
         labels = clustering.labels_
@@ -124,7 +126,7 @@ class Semantic_PointCloud_Utils(object):
 
         # Query the original points to assign the label
         for point in majority_cluster_points:
-            idx = original_tree.query_radius(point.reshape(1, -1), 0.05 * np.sqrt(2) + 0.001)[0]
+            idx = original_tree.query_radius(point.reshape(1, -1), clustering_distance)[0]
             segmentation_labels[idx] = id
             
         return segmentation_labels
