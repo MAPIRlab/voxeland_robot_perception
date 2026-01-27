@@ -3,7 +3,6 @@
 # System Libraries
 import threading
 import time
-import os
 
 # Third-party libraries
 import numpy as np
@@ -14,6 +13,7 @@ from modules.camera import Camera
 from modules.data_standarization import DataStandarization
 from modules.pointclouds import Semantic_PointCloud_Utils
 from modules.open_vocabulary_categories import get_category_manager
+from modules.math_utils import MathUtils
 
 # ROS-related libraries
 import rclpy
@@ -193,6 +193,8 @@ class MinimalMapper(Node):
 
         self.queue_all_images = self.load_param("queue_all_images", False) # if True, keep a queue with all images. Otherwise, only process the most recent one
         self.waiting_for_segmentation = False
+        self.only_key_poses = self.load_param("only_key_poses", False) # if True, avoids processing "repeated" image by only accepting new observations if the robot's pose has changed
+        self.pose_last_observation = None
 
         self.get_logger().warn("[VOXELAND] Everything ready to map!")
 
@@ -379,13 +381,28 @@ class MinimalMapper(Node):
             return
 
 
-        if self.camera.intrinsics_initialized and self.camera.extrinsics_initialized:
+        distance_condition = False
+        angle_condition = False
+        if self.only_key_poses and self.pose_last_observation is not None:
+            distance_thr = 0.07
+            angle_thr = 0.1
+            p, q = self.transformations.pose_to_pq(pose_msg.pose.pose)
+            distance_condition = np.any((self.pose_last_observation[0]-p) > distance_thr)
+            angle_condition = MathUtils.quat_distance(q, self.pose_last_observation[1]) > angle_thr
+        
+        # should_accept_new_obs = True
+        should_accept_new_obs = (self.pose_last_observation is None) or distance_condition or angle_condition
 
+
+        if self.camera.intrinsics_initialized and self.camera.extrinsics_initialized and should_accept_new_obs:
+            
             img_rgb = self.standarization.standarize_rgb(rgb_msg)
             img_depth = self.standarization.standarize_depth(depth_msg)
 
+            
+            self.pose_last_observation = self.transformations.pose_to_pq(pose_msg.pose.pose) # record the pose of the last accepted image so we can avoid taking many repeated observations
             pose_se3 = self.transformations.msg_to_se3(pose_msg.pose.pose)
-            pose_covariance = pose_msg.pose.covariance         
+            pose_covariance = pose_msg.pose.covariance 
 
             new_observation = {"pose": pose_se3,
                                "covariance": pose_covariance,
