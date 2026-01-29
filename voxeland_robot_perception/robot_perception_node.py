@@ -389,9 +389,10 @@ class MinimalMapper(Node):
             p, q = self.transformations.pose_to_pq(pose_msg.pose.pose)
             distance_condition = np.any((self.pose_last_observation[0]-p) > distance_thr)
             angle_condition = MathUtils.quat_distance(q, self.pose_last_observation[1]) > angle_thr
+            should_accept_new_obs = distance_condition or angle_condition
+        else:
+            should_accept_new_obs = True
         
-        # should_accept_new_obs = True
-        should_accept_new_obs = (self.pose_last_observation is None) or distance_condition or angle_condition
 
 
         if self.camera.intrinsics_initialized and self.camera.extrinsics_initialized and should_accept_new_obs:
