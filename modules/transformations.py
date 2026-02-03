@@ -332,7 +332,7 @@ class Transformations(object):
         
         - Input: q = quaternion array [x,y,z,w] (xi + yj + zk + w)
 
-        - Output ang_v = [u,v,w] : roll, pitch and yaw angles stored as array
+        - Output ang_v = [y,p,r] : [yaw , pitch , roll]
         
         '''
 
@@ -341,15 +341,26 @@ class Transformations(object):
         z = q[2]
         w = q[3]
 
+        disc = w*y-x*z
 
-        u = np.arctan2(2*w*x+y*z,w**2 - x**2 - y**2 + z**2)
-        v = np.arcsin(2*(w*y-x*z))
-        w = np.arctan2(2*(w*z+x*y),w**2 + x**2 - y**2 - z**3)
+        if np.abs(disc) < 0.5:  
+            yaw = np.arctan2(2*(z*w+x*y),1-2*(y**2*z**2))
+            pitch = np.arcsin(2*disc)
+            roll = np.arctan2(2*(w*x+y*z),1-2*(x**2+y**2))
 
-        return [u,v,w]
+            return [yaw,pitch,roll]
+        
+        elif disc == 0.5:
+            
+            yaw = -2 *np.atan2(x/w)
+            pitch = np.pi/2
+        
+        else:
+            yaw = 2*np.atan2(x,w)
+            pitch = -np.pi/2
+
+        return [yaw,pitch,0]
     
-
-
     @staticmethod 
     def euler_to_quaternion(v_ang):
 
@@ -459,7 +470,7 @@ class Transformations(object):
                 :sample_results: n_samples x 6 matrix [x_i y_i z_i roll_i pitch_i yaw_i]                                                            
         '''
 
-        mean_v = p + v_ang 
+        mean_v = np.concatenate([p,v_ang]) 
 
         rng = np.random.RandomState(12)
         sampled_results=rng.multivariate_normal(mean=mean_v,cov=cv_matrix,size=n_samples)
