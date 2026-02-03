@@ -77,7 +77,12 @@ class PoseSampler(Node):
             cloud_msg = self.data_queue.pop(0)
 
             p,v_angles,cv_matrix=self.transformations.msg_to_pv_cvmatrix(cloud_msg.pose)
+
+            # self.get_logger().info("Pose: {} \n v_angles: {} \n cv_mat: {}".format(p,v_angles,cv_matrix)) 
+
             sample_points = self.transformations.sample_distribution(p,v_angles,cv_matrix,self.n_samples_map) 
+
+            # self.get_logger().info("Sampled Results: {} \n ".format(sample_points)) 
 
             poses_Stamped=PoseArray()
             poses_Stamped.header = cloud_msg.header
@@ -97,6 +102,8 @@ class PoseSampler(Node):
                 self.pointcloud_pub1.publish(cloud_msg.cloud)
                 
                 poses_Stamped.poses.append(cloud_msg.pose.pose)
+
+            sensor_pose_Stamped.pose = cloud_msg.pose
     
             self.sampled_pose_pub.publish(poses_Stamped)
             self.sensor_pose.publish(sensor_pose_Stamped)
