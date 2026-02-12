@@ -3,6 +3,7 @@
 # System Libraries
 import threading
 import time
+import os
 
 # Third-party libraries
 import numpy as np
@@ -12,6 +13,7 @@ from modules.transformations import Transformations
 from modules.camera import Camera
 from modules.data_standarization import DataStandarization
 from modules.pointclouds import Semantic_PointCloud_Utils
+from modules.open_vocabulary_categories import get_category_manager
 
 # ROS-related libraries
 import rclpy
@@ -44,28 +46,60 @@ class MinimalMapper(Node):
         self.camera = Camera()
         self.transformations = Transformations()
 
-        # This is hardcoded... change to read it from a file
-        categories = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
-                        'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
-                        'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
-                        'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-                        'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
-                        'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
-                        'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
-                        'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-                        'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',
-                        'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
-                        'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
-                        'toothbrush']
+        # Initialize open vocabulary category manager
+        self.category_manager = get_category_manager()
         
-        self.valid_classes = ["bed", "chair", "couch", "dining table", "book", "refrigerator", "tv", "toilet", "handbag", "unknown"]
-        self.valid_classes = categories
+        # ========== VOCABULARY MODE CONFIGURATION ==========
+        # Set to True for closed vocabulary mode (fixed category list, like old Voxeland)
+        # Set to False for open vocabulary mode (dynamic categories)
+        self.close_vocabulary = False
+        
+        # Fixed category list for closed vocabulary mode
+        # These are the SceneNN evaluation categories
+        self.fixed_valid_classes = ["bed", "chair", "couch", "dining table", "book", 
+                                   "refrigerator", "tv", "toilet", "handbag", "unknown"]
+        
+        # COCO categories for open vocabulary fallback
+        coco_categories = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck',
+                          'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench',
+                          'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra',
+                          'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+                          'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
+                          'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup',
+                          'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+                          'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+                          'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse',
+                          'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink',
+                          'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
+                          'toothbrush']
+        
+        # Configure based on vocabulary mode
+        if self.close_vocabulary:
+            # Closed vocabulary: use fixed category list
+            initial_categories = self.fixed_valid_classes.copy()
+            self.valid_classes = self.fixed_valid_classes.copy()
+            self.open_vocabulary_mode = False
+            self.get_logger().warn("[VOXELAND] Running in CLOSED VOCABULARY mode")
+            self.get_logger().warn(f"[VOXELAND] Valid categories: {self.valid_classes}")
+        else:
+            # Open vocabulary: start with COCO categories
+            initial_categories = coco_categories
+            self.valid_classes = coco_categories.copy()
+            self.open_vocabulary_mode = True
+            self.get_logger().warn("[VOXELAND] Running in OPEN VOCABULARY mode")
+            self.get_logger().warn(f"[VOXELAND] Starting with {len(self.valid_classes)} COCO categories")
+        
+        # Initialize category manager with initial categories
+        self.category_manager.initialize_with_categories(initial_categories)
+        
+        # Get current categories for initialization
+        current_categories = self.category_manager.get_all_categories()
 
          # OBJECTS AND HANDLERS
-
-        self.pointcloud_utils = Semantic_PointCloud_Utils(categories)
+        self.pointcloud_utils = Semantic_PointCloud_Utils(current_categories, self.category_manager)
         self.standarization = DataStandarization(dataset=self.load_param('dataset', "VirtualGallery"),
-                                                 object_detector=self.load_param('object_detector', "Detectron2"))
+                                                 object_detector=self.load_param('object_detector', "Detectron2"),
+                                                 category_manager=self.category_manager)
         self.bridge = CvBridge()
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -129,7 +163,21 @@ class MinimalMapper(Node):
             if self.segmentation_from == "topic":
                 subscriptions.append(message_filters.Subscriber(self, Image, "/camera/segmentation"))
             elif self.segmentation_from == "service": 
-                serviceName = self.load_param('service_name', "/detectron/segment")
+                # Select service based on object_detector parameter
+                object_detector = self.load_param('object_detector', "Detectron2")
+                
+                # Check for both parameter names for compatibility
+                # 'service_sem_seg' is used in XML files, 'service_name' in Python launches
+                service_name_param = self.load_param('service_sem_seg', None)
+                if service_name_param is None:
+                    service_name_param = self.load_param('service_name', None)
+                
+                if object_detector.lower() == "talos":
+                    serviceName = service_name_param or "/talos/segment"
+                else:  # Default to detectron2 for backward compatibility
+                    serviceName = service_name_param or "/detectron/segment"
+                
+                self.get_logger().info(f"Using object detector: {object_detector}, service: {serviceName}")
                 self.cli = self.create_client(SegmentImage, serviceName)
                 while not self.cli.wait_for_service(timeout_sec=1.0):
                     self.get_logger().warn(f'Semantic segmentation service {self.cli.srv_name} not available, waiting...')
@@ -184,6 +232,40 @@ class MinimalMapper(Node):
 
                 if self.filter_semantics:
                     
+                    # In open vocabulary mode, update valid_classes dynamically with new detected categories
+                    # In closed vocabulary mode, only use the fixed list (no dynamic updates)
+                    if self.open_vocabulary_mode:
+                        # Get all detected categories from the current frame
+                        detected_categories = set()
+                        for obj in processing_observation["semantics"].objects:
+                            if hasattr(obj, 'results') and len(obj.results) > 0:
+                                category = obj.results[0].hypothesis.class_id
+                                if category and category != "unknown":
+                                    detected_categories.add(category)
+                        
+                        # Debug: log all detected categories in this frame
+                        if detected_categories:
+                            self.get_logger().debug(f"[VOXELAND] Detected categories in current frame: {list(detected_categories)}")
+                        
+                        # Add new categories to the category manager and update valid_classes
+                        new_categories_added = []
+                        for category in detected_categories:
+                            if category not in self.valid_classes:
+                                self.category_manager.add_category(category)
+                                self.valid_classes.append(category)
+                                new_categories_added.append(category)
+                        
+                        if new_categories_added:
+                            self.get_logger().info(f"[VOXELAND] Added new categories to open vocabulary: {new_categories_added}")
+                            self.get_logger().info(f"[VOXELAND] Total categories now: {len(self.valid_classes)}")
+                            # Save categories to file if configured
+                            save_categories_file = self.load_param('save_categories_file', None)
+                            if save_categories_file:
+                                self.category_manager.save_categories_to_file(save_categories_file)
+                    
+                    # Filter using valid_classes
+                    # In closed vocabulary: filters out all categories not in fixed list
+                    # In open vocabulary: filters using dynamically updated list (may have been updated above)
                     semantic_ids = processing_observation["semantics"].filter_valid_classes(semantic_ids, self.valid_classes)
 
                     unique_ids = np.unique(semantic_ids)
@@ -262,6 +344,11 @@ class MinimalMapper(Node):
                                                                          timestamp = processing_observation["timestamp"])
 
             elif self.pointcloud_type == "XYZSemantics":
+                # Update pointcloud_utils with current categories before creating message
+                if self.open_vocabulary_mode and hasattr(self, 'category_manager'):
+                    current_categories = self.category_manager.get_all_categories()
+                    self.pointcloud_utils.categories = current_categories
+                
                 cloud_msg = self.pointcloud_utils.create_point_cloud_msg(xyz_cloud, 
                                                                          semantics_ids = semantic_ids,
                                                                          semantics_instances=processing_observation["semantics"].objects,
@@ -269,7 +356,12 @@ class MinimalMapper(Node):
                                                                          cloud_frame_reference = self.camera_frame_id, 
                                                                          timestamp = processing_observation["timestamp"])
             
-            elif self.pointcloud_type == "XYZRGBSemantics":       
+            elif self.pointcloud_type == "XYZRGBSemantics":
+                # Update pointcloud_utils with current categories before creating message
+                if self.open_vocabulary_mode and hasattr(self, 'category_manager'):
+                    current_categories = self.category_manager.get_all_categories()
+                    self.pointcloud_utils.categories = current_categories
+                       
                 cloud_msg = self.pointcloud_utils.create_point_cloud_msg(xyz_cloud, 
                                                                          colors = rgb_colors,
                                                                          semantics_ids = semantic_ids,
@@ -400,7 +492,12 @@ class MinimalMapper(Node):
     ####################################################################################################################
 
     def load_param(self, param, default=None):
-        new_param = self.declare_parameter(param, default).value
+        try:
+            # Try to get the parameter if it's already declared
+            new_param = self.get_parameter(param).value
+        except Exception:
+            # Parameter not declared yet, declare it
+            new_param = self.declare_parameter(param, default).value
         self.get_logger().info("[VOXELAND] {}: {}".format(param, new_param))
         return new_param
     
