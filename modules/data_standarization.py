@@ -6,12 +6,11 @@ from modules.semantics import Semantics
 
 class DataStandarization(object):
     
-    def __init__(self, dataset, object_detector, object_categories_txt="coco-classes.txt", category_manager=None):
+    def __init__(self, dataset, object_categories_txt="coco-classes.txt", category_manager=None):
 
         self.image_width = 0
         self.image_height = 0
         self.dataset = dataset
-        self.object_detector = object_detector
         self.bridge = CvBridge()
         self.category_manager = category_manager
 
@@ -109,17 +108,6 @@ class DataStandarization(object):
                                      semantic_msg.instances[0].mask.height, 
                                      self.category_manager)
 
-        if self.object_detector == "Detectron2":
-            
-            standard_semantics.add_objects(semantic_msg.instances)
-        
-        elif self.object_detector == "TALOS":
-            # Handle TALOS detection format - similar to Detectron2 but may have different categories
-            standard_semantics.add_objects(semantic_msg.instances)
-        
-        # Add support for other open vocabulary detectors here
-        else:
-            # Default handling - try to process as standard format
-            standard_semantics.add_objects(semantic_msg.instances)
+        standard_semantics.add_objects(semantic_msg.instances)
 
         return standard_semantics

@@ -78,7 +78,6 @@ def launch_setup(context, *args, **kwargs):
     
     # Configure detector-specific parameters
     if detector_type == "talos":
-        service_name = "/talos/segment"
         object_detector_name = "TALOS"
         # TALOS-specific parameters
         extra_params = {
@@ -87,7 +86,6 @@ def launch_setup(context, *args, **kwargs):
             "filter_semantics": True,
         }
     elif detector_type == "yoloe":
-        service_name = "/yoloe/segment"
         object_detector_name = "YOLOE"
         # YOLOE supports open vocabulary
         extra_params = {
@@ -96,8 +94,7 @@ def launch_setup(context, *args, **kwargs):
             "filter_semantics": True,
         }
     else:  # detectron2 or any other
-        service_name = "/detectron/segment"
-        object_detector_name = "Detectron2"
+        object_detector_name = detector_type
         # Detectron2 doesn't need these parameters
         extra_params = {}
     
@@ -114,7 +111,6 @@ def launch_setup(context, *args, **kwargs):
         
         # Segmentation configuration
         "semantic_segmentation_mode": LaunchConfiguration('semantic_segmentation_mode'),
-        "service_sem_seg": service_name,
         "topic_sem_seg": LaunchConfiguration('topic_sem_seg'),
         
         # Image message types

@@ -11,5 +11,7 @@ class MathUtils(object):
     # IMPORTANT: assumes unit quaternions
     @staticmethod
     def quat_distance(a: np.ndarray, b: np.ndarray):
-        angle = np.arccos(2 * np.dot(a,b)**2 -1)
+        v = 2 * np.dot(a,b)**2 -1
+        v = np.clip(v, -1, 1)
+        angle = np.arccos(v)
         return angle

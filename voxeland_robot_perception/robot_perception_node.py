@@ -98,7 +98,6 @@ class MinimalMapper(Node):
          # OBJECTS AND HANDLERS
         self.pointcloud_utils = Semantic_PointCloud_Utils(current_categories, self.category_manager)
         self.standarization = DataStandarization(dataset=self.load_param('dataset', "VirtualGallery"),
-                                                 object_detector=self.load_param('object_detector', "Detectron2"),
                                                  category_manager=self.category_manager)
         self.bridge = CvBridge()
         self.tf_buffer = Buffer()
@@ -163,19 +162,8 @@ class MinimalMapper(Node):
             if self.segmentation_from == "topic":
                 subscriptions.append(message_filters.Subscriber(self, Image, "/camera/segmentation"))
             elif self.segmentation_from == "service": 
-                # Select service based on object_detector parameter
-                object_detector = self.load_param('object_detector', "Detectron2")
-                
-                # Check for both parameter names for compatibility
-                # 'service_sem_seg' is used in XML files, 'service_name' in Python launches
-                service_name_param = self.load_param('service_sem_seg', None)
-                if service_name_param is None:
-                    service_name_param = self.load_param('service_name', None)
-                
-                if object_detector.lower() == "talos":
-                    serviceName = service_name_param or "/talos/segment"
-                else:  # Default to detectron2 for backward compatibility
-                    serviceName = service_name_param or "/detectron/segment"
+                object_detector :str = self.load_param('object_detector', "Detectron2")
+                serviceName = f"/{object_detector.lower()}/segment"
                 
                 self.get_logger().info(f"Using object detector: {object_detector}, service: {serviceName}")
                 self.cli = self.create_client(SegmentImage, serviceName)
@@ -354,6 +342,7 @@ class MinimalMapper(Node):
         self.waiting_for_segmentation = False
         observation["semantics"] = self.standarization.standarize_semantics(response.result())
 
+        # self._logger.info(f"Ellapsed waiting for segmentation: {time.time()-observation["request_time"]}s")
         self.data_queue.append(observation)
 
 
@@ -410,7 +399,8 @@ class MinimalMapper(Node):
                                "img_rgb": img_rgb, 
                                "img_depth": img_depth, 
                                "semantics": None,
-                               "timestamp": rgb_msg.header.stamp}
+                               "timestamp": rgb_msg.header.stamp,
+                               "request_time": time.time()}
 
             if self.is_using_semantics():
 
