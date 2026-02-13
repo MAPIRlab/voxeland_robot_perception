@@ -191,9 +191,11 @@ class MinimalMapper(Node):
         thread = threading.Thread(target=rclpy.spin, args=(self,), daemon=True)
         thread.start()
 
+        rate = self.create_rate(60)
         while rclpy.ok(): 
 
             if len(self.data_queue) == 0:
+                rate.sleep()
                 continue
 
             st = time.time()
@@ -325,6 +327,7 @@ class MinimalMapper(Node):
                 self.get_logger().info("Observation processed! ||  {} objects detected.".format(processing_observation["semantics"].n_objects))
 
             self.get_logger().info("Average opinions generation time: {} ms".format(1000.*self.opinions_time / float(self.opinions_k)))
+            rate.sleep()
 
 
     ####################################################################################################################
