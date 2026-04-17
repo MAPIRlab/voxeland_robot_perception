@@ -29,6 +29,7 @@ from launch.frontend.parse_substitution import parse_substitution
 def launch_arguments():
     return [
         # Core parameters
+        DeclareLaunchArgument("imageType", default_value="CompressedImage"),
         DeclareLaunchArgument("dataset", default_value="other"),
         DeclareLaunchArgument("object_detector", default_value="detectron", 
                             description="Detector type: 'talos', 'yoloe', or 'detectron'"),
@@ -114,8 +115,8 @@ def launch_setup(context, *args, **kwargs):
         "topic_sem_seg": LaunchConfiguration('topic_sem_seg'),
         
         # Image message types
-        "rgb_image_type": "CompressedImage",
-        "depth_image_type": "CompressedImage",
+        "rgb_image_type": LaunchConfiguration('imageType'),
+        "depth_image_type": LaunchConfiguration('imageType'),
         
         # Camera calibration (intrinsics from topic)
         "intrinsics_from_topic": True,
@@ -141,7 +142,7 @@ def launch_setup(context, *args, **kwargs):
         "pointcloud_type": LaunchConfiguration('mapping_mode'),
         "topic_pointcloud_output": "cloud_in",
         "queue_all_images" : False,
-        "only_key_poses" : False
+        "only_key_poses" : True
     }
     
     # Merge base parameters with detector-specific ones
