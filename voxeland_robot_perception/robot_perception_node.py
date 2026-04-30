@@ -191,7 +191,7 @@ class MinimalMapper(Node):
         thread = threading.Thread(target=rclpy.spin, args=(self,), daemon=True)
         thread.start()
 
-        rate = self.create_rate(60)
+        rate = self.create_rate(200)
         while rclpy.ok(): 
 
             if len(self.data_queue) == 0:
@@ -345,7 +345,7 @@ class MinimalMapper(Node):
         self.waiting_for_segmentation = False
         observation["semantics"] = self.standarization.standarize_semantics(response.result())
 
-        # self._logger.info(f"Ellapsed waiting for segmentation: {time.time()-observation["request_time"]}s")
+        self._logger.info("Ellapsed waiting for segmentation: {:.2f}ms".format((time.time()-observation["request_time"])*1e3))
         self.data_queue.append(observation)
 
 

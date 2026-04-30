@@ -103,7 +103,7 @@ class Semantic_PointCloud_Utils(object):
         clustering_distance = 0.1
 
         # Apply clustering to segment object from background
-        clustering = DBSCAN(eps=0.1, min_samples=9).fit(downsampled_points)
+        clustering = DBSCAN(eps=0.1, min_samples=15, n_jobs=-1).fit(downsampled_points)
         labels = clustering.labels_
 
         if len(labels) == 0:

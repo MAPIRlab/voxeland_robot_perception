@@ -84,7 +84,7 @@ class DataStandarization(object):
             standard_depth = self.bridge.imgmsg_to_cv2(depth_msg, "32FC1")
         
         elif self.dataset == "sceneNN":
-            standard_depth = self.bridge.imgmsg_to_cv2(depth_msg, "16UC1")
+            standard_depth = self.bridge.imgmsg_to_cv2(depth_msg)
             standard_depth = np.divide(standard_depth, 1000.0)
 
         elif self.dataset == "ROS-Unity":
